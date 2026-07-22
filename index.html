@@ -690,6 +690,37 @@
       ready = true; resetSel(); renderItems(); renderLog(); renderMaster(); subscribeRealtime();
     }).catch(function (e) { $("logEmpty").textContent = "연결 오류"; toast("연결 오류: " + (e && e.message || e), "err"); });
   }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init); else init();
+  var AUTH_EMAIL="hwteam@fainders.ai";
+  function showLogin(){
+    if(document.getElementById("loginBg")) return;
+    var bg=document.createElement("div"); bg.id="loginBg";
+    bg.style.cssText="position:fixed;inset:0;z-index:200;display:grid;place-items:center;background:var(--bg);padding:24px;";
+    bg.innerHTML='<div style="width:100%;max-width:340px;text-align:center;">'
+      +'<div style="font-size:16px;font-weight:750;letter-spacing:-.01em;margin-bottom:6px;">VCO 호기별 추가 부품 출고</div>'
+      +'<div style="font-size:13px;color:var(--muted);margin-bottom:18px;">회사 공용 비밀번호를 입력하세요</div>'
+      +'<input id="loginPw" type="password" placeholder="비밀번호" autocomplete="current-password" style="width:100%;text-align:center;font-size:16px;margin-bottom:10px;">'
+      +'<button id="loginBtn" class="btn dispatch" style="width:100%;justify-content:center;">들어가기</button>'
+      +'<div id="loginErr" style="font-size:12.5px;color:var(--danger);margin-top:10px;min-height:16px;"></div>'
+      +'</div>';
+    document.body.appendChild(bg);
+    var pw=bg.querySelector("#loginPw"), btn=bg.querySelector("#loginBtn"), err=bg.querySelector("#loginErr");
+    function tryLogin(){
+      var p=(pw.value||"").trim(); if(!p){ pw.focus(); return; }
+      btn.disabled=true; err.textContent="확인 중…";
+      supa.auth.signInWithPassword({email:AUTH_EMAIL, password:p}).then(function(r){
+        if(r.error){ err.textContent="비밀번호가 올바르지 않습니다"; btn.disabled=false; pw.select(); return; }
+        bg.remove(); init();
+      }).catch(function(){ err.textContent="연결 오류 — 잠시 후 다시"; btn.disabled=false; });
+    }
+    btn.addEventListener("click", tryLogin);
+    pw.addEventListener("keydown", function(e){ if(e.key==="Enter") tryLogin(); });
+    setTimeout(function(){ pw.focus(); }, 50);
+  }
+  function bootAuth(){
+    supa.auth.getSession().then(function(res){
+      if(res && res.data && res.data.session){ init(); } else { showLogin(); }
+    }).catch(function(){ showLogin(); });
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bootAuth); else bootAuth();
 })();
 </script>
