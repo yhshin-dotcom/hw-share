@@ -364,7 +364,7 @@
     });
     return;
   }
-  var supa = window.supabase.createClient(SUPA_URL, SUPA_KEY);
+  var supa = window.supabase.createClient(SUPA_URL, SUPA_KEY, {auth:{storage:(typeof window!=="undefined"&&window.sessionStorage)||undefined, persistSession:true, autoRefreshToken:true}});
 
   var SEED_MASTER = [
     { name: "RS232-Ams 시리얼 변환 케이블", conn: "결제단말기 - VCO 태블릿 연결부", types: [{ name: "rs232케이블", price: 10000 }] },
