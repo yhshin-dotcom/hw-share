@@ -375,6 +375,7 @@
   <div class="grabber"></div>
   <h3 id="menuTitle">데이터 관리</h3>
   <div class="sheet-actions" style="flex-direction:column;">
+    <button class="btn" id="catMgrBtn" style="text-align:left;">카테고리 관리 (이름 변경·추가)</button>
     <button class="btn" id="exportBtn" style="text-align:left;">데이터 백업 — 파일 내려받기 (사진 포함)</button>
     <button class="btn" id="copyBtn" style="text-align:left;">데이터 백업 — 텍스트 복사 (파일 저장이 안 될 때)</button>
     <button class="btn" id="importBtn" style="text-align:left;">복원 — 백업 파일 불러오기</button>
@@ -385,7 +386,19 @@
     <button class="btn ghost" id="menuClose">닫기</button>
   </div>
   <div class="datalist-note" style="margin-top:10px;line-height:1.5;">
-    데이터는 이 브라우저에만 저장됩니다(서버 전송 없음). 폰과 PC 등 다른 기기로 옮기려면 백업(JSON)을 내려받아 다른 기기에서 복원하세요.
+    데이터는 공유 서버(Supabase)에 저장되어 모든 사람에게 실시간으로 공유됩니다. 백업은 안전을 위한 추가 복사본입니다.
+  </div>
+</section>
+
+<section class="sheet" id="catSheet" role="dialog" aria-modal="true" aria-labelledby="catTitle">
+  <div class="grabber"></div>
+  <h3 id="catTitle">카테고리 관리</h3>
+  <div class="datalist-note" id="catBagNote" style="margin-bottom:10px;"></div>
+  <div id="catList"></div>
+  <div class="sheet-actions" style="flex-direction:column;margin-top:10px;">
+    <button class="btn" id="catAdd" style="text-align:left;">＋ 카테고리 추가</button>
+    <button class="btn" id="catSave">저장</button>
+    <button class="btn ghost" id="catClose">닫기</button>
   </div>
 </section>
 
@@ -937,6 +950,44 @@
   twoStep($("#deleteBtn"),"한 번 더 누르면 삭제됩니다",deleteEditing);
   $("#addBtn").addEventListener("click",function(){openEdit(null);});
   $("#menuBtn").addEventListener("click",function(){showSheet("#menuSheet");});
+  function currentMgrBag(){ return (uiBag==="basic"||uiBag==="pro")?uiBag:"pro"; }
+  function addCatRow(orig,val){
+    var wrap=document.createElement("div"); wrap.className="catrow"; wrap.setAttribute("data-orig",orig||"");
+    wrap.style.cssText="display:flex;gap:8px;align-items:center;margin-bottom:6px;";
+    wrap.innerHTML='<input class="catname" value="'+esc(val||"")+'" placeholder="카테고리 이름" style="flex:1;"><button class="row-del" data-catdel="1" title="삭제">✕</button>';
+    $("#catList").appendChild(wrap); return wrap;
+  }
+  function openCatMgr(){
+    var bk=currentMgrBag();
+    $("#catBagNote").textContent=(bk==="basic"?"Basic":"Pro")+" 가방의 카테고리입니다. 이름을 바꾸면 그 카테고리의 품목들도 함께 바뀝니다.";
+    $("#catList").innerHTML="";
+    (state.bags[bk].categories||[]).forEach(function(c){ addCatRow(c,c); });
+    hideSheets(); showSheet("#catSheet");
+  }
+  function saveCats(){
+    var bk=currentMgrBag();
+    var rows=[].slice.call(document.querySelectorAll("#catList .catrow"));
+    var newList=[], renames=[], seen={};
+    rows.forEach(function(row){
+      var orig=row.getAttribute("data-orig"), val=(row.querySelector(".catname").value||"").trim();
+      if(!val||seen[val]) return; seen[val]=true; newList.push(val);
+      if(orig&&orig!==val) renames.push([orig,val]);
+    });
+    if(!newList.length){ toast("카테고리를 최소 1개는 남겨주세요"); return; }
+    renames.forEach(function(rn){ state.bags[bk].items.forEach(function(it){ if(it.cat===rn[0]) it.cat=rn[1]; }); });
+    state.bags[bk].categories=newList;
+    save(); render(); hideSheets(); toast("카테고리를 저장했어요 (모두에게 공유됨)");
+  }
+  $("#catMgrBtn").addEventListener("click", openCatMgr);
+  $("#catClose").addEventListener("click", hideSheets);
+  $("#catAdd").addEventListener("click", function(){ var w=addCatRow("",""); var i=w.querySelector(".catname"); if(i) i.focus(); });
+  $("#catSave").addEventListener("click", saveCats);
+  $("#catList").addEventListener("click", function(e){
+    var b=e.target.closest("[data-catdel]"); if(!b) return;
+    var row=b.closest(".catrow"), orig=row.getAttribute("data-orig"), bk=currentMgrBag();
+    if(orig && (state.bags[bk].items||[]).some(function(it){return it.cat===orig;})){ toast("이 카테고리를 쓰는 품목이 있어요 — 이름만 바꿔주세요"); return; }
+    row.remove();
+  });
   document.addEventListener("keydown",function(e){if(e.key==="Escape"){hideSheets();$("#viewer").classList.remove("on");}});
 
   /* ---------- list delegation ---------- */
